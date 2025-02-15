@@ -137,7 +137,7 @@ install_binary() {
     info "Installing binary to ${BINARY_PATH}..."
     install -m 755 "$tmp_dir/authencore/authencore" "$BINARY_PATH"
 
-    # Install config
+    # Install settings
     if [ ! -f "${CONFIG_DIR}/authencore.toml" ]; then
         info "Installing default configuration..."
         install -m 600 -o ${SUDO_USER} -g $(get_group_name) "$tmp_dir/authencore/authencore.toml.sample" "${CONFIG_DIR}/authencore.toml"
@@ -182,7 +182,7 @@ main() {
     chown ${SUDO_USER}:$(get_group_name) "${CACHE_DIR}"
     chmod 700 "${CACHE_DIR}"
 
-    # Install binary and config
+    # Install binary and settings
     install_binary
 
     success "Installation completed successfully!"

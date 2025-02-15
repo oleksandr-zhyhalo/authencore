@@ -1,44 +1,34 @@
-use crate::utils::errors::{ConfigError, Error, Result};
+use crate::error::{ConfigError, Error, Result};
 use serde::Deserialize;
 use std::path::{Path, PathBuf};
 
 #[derive(Debug, Deserialize)]
-pub struct Config {
-    #[serde(default = "default_cache_dir")]
-    pub cache_dir: PathBuf,
-
-    #[serde(default = "default_log_dir")]
-    pub log_dir: PathBuf,
-
-    #[serde(rename = "environment")]
-    pub env_config: EnvironmentConfig,
+pub struct AppConfig {
+    pub active_profile: String,
+    pub profiles: Vec<Profile>
 }
 
-#[derive(Debug, Deserialize)]
-pub struct EnvironmentConfig {
-    pub current: String,
-    #[serde(flatten)]
-    pub profiles: std::collections::HashMap<String, EnvironmentProfile>,
+impl AppConfig {
+    pub fn active_profile(&self) -> Result<&Profile> {
+        self.profiles
+            .iter()
+            .find(|p| p.name == self.active_profile)
+            .ok_or_else(|| Error::Config(ConfigError::MissingEnvironment(
+                format!("Active profile '{}' not found in configuration", self.active_profile)
+            )))    }
 }
 
 #[derive(Debug, Deserialize, Clone)]
-pub struct EnvironmentProfile {
+pub struct Profile {
+    pub name: String,
     pub aws_iot_endpoint: String,
     pub role_alias: String,
+    pub ca_path: PathBuf,
     pub cert_path: PathBuf,
     pub key_path: PathBuf,
-    pub ca_path: PathBuf,
 }
 
-fn default_cache_dir() -> PathBuf {
-    PathBuf::from("/var/cache/authencore")
-}
-
-fn default_log_dir() -> PathBuf {
-    PathBuf::from("/var/log/authencore")
-}
-
-impl Config {
+impl AppConfig {
     pub fn load() -> Result<Self> {
         let config_path = Self::find_config_file()?;
 
@@ -51,7 +41,16 @@ impl Config {
             .try_deserialize()
             .map_err(|e| Error::Config(ConfigError::LoadError(e.to_string())))
     }
-
+    pub fn validate(&self) -> Result<()> {
+        if self.active_profile != "" {
+            Ok(println!("TODO Validation"));
+        } Err("Profile does not exist")?
+    }
+    pub fn list_profiles(&self) {
+        for profile in &self.profiles {
+            println!("Profile: {}", profile.name);
+        }
+    }
     fn find_config_file() -> Result<PathBuf> {
         let paths = ["/etc/authencore/authencore.toml", "./authencore.toml"];
 
@@ -65,17 +64,6 @@ impl Config {
         Err(Error::Config(ConfigError::LoadError(
             "No configuration file found in default locations".to_string(),
         )))
-    }
-
-    pub fn active_profile(&self) -> Result<&EnvironmentProfile> {
-        self.env_config
-            .profiles
-            .get(&self.env_config.current)
-            .ok_or_else(|| {
-                Error::Config(ConfigError::MissingEnvironment(
-                    self.env_config.current.clone(),
-                ))
-            })
     }
 
     pub fn validate_paths(&self) -> Result<()> {

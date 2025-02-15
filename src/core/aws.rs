@@ -1,15 +1,11 @@
-use crate::config::{Config, EnvironmentProfile};
-use crate::utils::errors::{Error, Result};
+use std::fs;
+use std::fs::OpenOptions;
+use std::path::Path;
+use std::time::Duration;
+use super::super::error::Result;
+use super::super::settings::Profile;
 use reqwest::{Certificate, Client, Identity};
 use serde::{Deserialize, Serialize};
-use std::time::Duration;
-use std::{fs, path::Path};
-use tracing::instrument;
-
-#[derive(Debug, Deserialize, Serialize)]
-pub struct AwsCredentialsResponse {
-    pub credentials: AwsCredentials,
-}
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct AwsCredentials {
@@ -22,20 +18,19 @@ pub struct AwsCredentials {
     pub expiration: String,
 }
 
-#[instrument(skip(config))]
-pub async fn create_mtls_client(config: &EnvironmentProfile) -> Result<Client> {
-    let ca_cert = load_pem(&config.ca_path).map_err(|e| Error::LoadCaCert {
-        path: config.ca_path.clone(),
+pub async fn create_mtls_client(profile: &Profile) -> Result<Client> {
+    let ca_cert = load_pem(&profile.ca_path).map_err(|e| Error::LoadCaCert {
+        path: profile.ca_path.clone(),
         source: e,
     })?;
 
-    let client_cert = load_pem(&config.cert_path).map_err(|e| Error::LoadClientCert {
-        path: config.cert_path.clone(),
+    let client_cert = load_pem(&profile.cert_path).map_err(|e| Error::LoadClientCert {
+        path: profile.cert_path.clone(),
         source: e,
     })?;
 
-    let client_key = load_pem(&config.key_path).map_err(|e| Error::LoadPrivateKey {
-        path: config.key_path.clone(),
+    let client_key = load_pem(&profile.key_path).map_err(|e| Error::LoadPrivateKey {
+        path: profile.key_path.clone(),
         source: e,
     })?;
 
@@ -53,13 +48,13 @@ pub async fn create_mtls_client(config: &EnvironmentProfile) -> Result<Client> {
         .map_err(Error::HttpClient)
 }
 
-pub async fn get_aws_credentials(
-    env_profile: &EnvironmentProfile,
+pub async fn fetch_credentials(
+    profile: &Profile,
     client: &Client,
-) -> Result<AwsCredentialsResponse> {
+) -> Result<AwsCredentials> {
     let url = format!(
         "https://{}/role-aliases/{}/credentials",
-        env_profile.aws_iot_endpoint, env_profile.role_alias
+        profile.aws_iot_endpoint, profile.role_alias
     );
 
     let max_attempts = 3;
@@ -72,7 +67,7 @@ pub async fn get_aws_credentials(
             Ok(response) => {
                 if response.status().is_success() {
                     return response
-                        .json::<AwsCredentialsResponse>()
+                        .json::<AwsCredentials>()
                         .await
                         .map_err(Error::HttpClient);
                 }
@@ -97,13 +92,13 @@ pub async fn get_aws_credentials(
     }
 }
 
-pub fn format_credential_output(creds: &AwsCredentialsResponse) -> Result<()> {
+pub async  fn format_credentials(aws_credentials: &AwsCredentials) -> Result<()> {
     let output = serde_json::json!({
         "Version": 1,
-        "AccessKeyId": creds.credentials.access_key_id,
-        "SecretAccessKey": creds.credentials.secret_access_key,
-        "SessionToken": creds.credentials.session_token,
-        "Expiration": creds.credentials.expiration
+        "AccessKeyId": aws_credentials.access_key_id,
+        "SecretAccessKey": aws_credentials.secret_access_key,
+        "SessionToken": aws_credentials.session_token,
+        "Expiration": aws_credentials.expiration
     });
 
     // Print JSON to stdout
@@ -112,6 +107,46 @@ pub fn format_credential_output(creds: &AwsCredentialsResponse) -> Result<()> {
     // Log success message to stderr
     tracing::info!("Successfully formatted credentials for output");
     Ok(())
+}
+pub async fn get_cached_credentials() -> Result<Option<AwsCredentials>> {
+    let cache_path = Path::new("/var/cache/creds.json").to_path_buf();
+    if !cache_path.exists() {
+        return Ok(None);
+    }
+
+    let file = OpenOptions::new()
+        .read(true)
+        .open(&cache_path)
+        .map_err(|e| {
+            Error::Cache(format!(
+                "Failed to open cache file {}: {}",
+                cache_path.display(),
+                e
+            ))
+        })?;
+
+    file.lock_shared().map_err(|e| {
+        Error::Cache(format!(
+            "Failed to acquire shared lock on cache file: {}",
+            e
+        ))
+    })?;
+
+    let mut data = String::new();
+    {
+        use std::io::BufReader;
+        let mut reader = BufReader::new(&file);
+        reader
+            .read_to_string(&mut data)
+            .map_err(|e| Error::Cache(format!("Failed to read cache file: {}", e)))?;
+    }
+
+    file.unlock()
+        .map_err(|e| Error::Cache(format!("Failed to release lock on cache file: {}", e)))?;
+
+    let creds = serde_json::from_str(&data).map_err(Error::JsonParse)?;
+
+    Ok(Some(creds))
 }
 
 fn load_pem(path: &Path) -> std::io::Result<Vec<u8>> {

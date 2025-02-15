@@ -1,4 +1,4 @@
-use crate::utils::errors::{Error, Result};
+use crate::error::{Error, Result};
 use std::str::FromStr;
 use tracing_subscriber::{fmt, layer::SubscriberExt, util::SubscriberInitExt, EnvFilter, Layer};
 use uuid::Uuid;
