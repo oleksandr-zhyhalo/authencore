@@ -1,42 +1,63 @@
-use std::fs;
-use std::path::PathBuf;
-use chrono::{DateTime, Utc};
+use crate::error::{Error, Result};
 use serde::{Deserialize, Serialize};
-use crate::core::aws::AwsCredentials;
+use std::{fs, path::PathBuf};
+use chrono::{DateTime, Utc};
+use crate::core::aws::CredentialsResponse;
+
 #[derive(Debug, Serialize, Deserialize)]
 struct CachedCredentials {
-    credentials: AwsCredentials,
+    credentials: super::aws::CredentialsResponse,
     expiration: DateTime<Utc>,
 }
-pub fn get_cached_credentials() -> Result<Option<AwsCredentials>> {
-    let cache_path = get_cache_path()?;
 
-    if !cache_path.exists() {
+pub fn get_cached() -> Result<Option<super::aws::CredentialsResponse>> {
+    let path = cache_path()?;
+    if !path.exists() {
         return Ok(None);
     }
 
-    let content = fs::read_to_string(&cache_path)
-        .map_err(|e| Error::Cache(format!("Failed to read cache file: {}", e)))?;
+    let data = fs::read_to_string(&path)?;
+    let cached: CachedCredentials = serde_json::from_str(&data)?;
 
-    let cached: CachedCredentials = serde_json::from_str(&content)
-        .map_err(|e| Error::Cache(format!("Invalid cache format: {}", e)))?;
-
-    Ok(Some(cached.credentials))
-}
-pub fn credentials_expired(creds: &AwsCredentials) -> bool {
-    match DateTime::parse_from_rfc3339(&creds.expiration) {
-        Ok(expiration) => Utc::now() > expiration.with_timezone(&Utc),
-        Err(_) => true,
+    if Utc::now() > cached.expiration {
+        Ok(None)
+    } else {
+        Ok(Some(cached.credentials))
     }
 }
-fn get_cache_path() -> Result<PathBuf> {
-    let base_dir = if cfg!(target_os = "linux") {
-        PathBuf::from("/var/cache/authencore")
-    } else {
-        dirs::cache_dir()
-            .ok_or_else(|| Error::Cache("Could not determine cache directory".to_string()))?
-            .join("authencore")
+
+pub fn store(creds: &CredentialsResponse) -> Result<()> {
+    let path = cache_path()?;
+    let dir = path.parent().ok_or(Error::Cache("Invalid path".into()))?;
+
+    let expiration = DateTime::parse_from_rfc3339(&creds.credentials.expiration)
+        .map(|dt| dt.with_timezone(&Utc))
+        .map_err(|_| Error::CredentialsFormat)?;
+
+    let cached = CachedCredentials {
+        credentials: **creds.clone(),
+        expiration,
     };
 
-    Ok(base_dir.join("credentials.json"))
+    fs::create_dir_all(dir)?;
+    let data = serde_json::to_string(&cached)?;
+    fs::write(path, data)?;
+
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        let mut perms = fs::metadata(&path)?.permissions();
+        perms.set_mode(0o600);
+        fs::set_permissions(&path, perms)?;
+    }
+
+    Ok(())
+}
+
+fn cache_path() -> Result<PathBuf> {
+    let base = dirs::cache_dir()
+        .ok_or(Error::Cache("Failed to find cache directory".into()))?
+        .join("authencore");
+
+    Ok(base.join("credentials.json"))
 }

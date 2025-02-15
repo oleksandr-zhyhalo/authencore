@@ -1,5 +1,5 @@
 use clap::{Parser, Subcommand, ValueEnum};
-#[derive(Parser, Debug)]
+#[derive(Parser, Debug, Clone)]
 #[command(
     author,
     version,
@@ -13,7 +13,7 @@ pub struct Cli {
     pub verbose: u8,
 }
 
-#[derive(Debug, Subcommand)]
+#[derive(Debug, Subcommand, Clone)]
 pub enum Commands {
     Fetch {
         #[arg(short, long)]
@@ -32,11 +32,11 @@ pub enum Commands {
     },
 }
 
-#[derive(Subcommand, Debug)]
+#[derive(Subcommand, Debug, Clone)]
 pub(crate) enum CacheActions {
     Clear,
 }
-#[derive(Subcommand, Debug)]
+#[derive(Subcommand, Debug, Clone)]
 pub enum ConfigActions {
     Validate,
     SetEnv,

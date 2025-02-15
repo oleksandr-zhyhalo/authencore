@@ -44,6 +44,8 @@ pub enum Error {
 
     #[error("Logging setup error: {0}")]
     Logging(String),
+    #[error("Invalid credentials format")]
+    CredentialsFormat,
 }
 
 #[derive(Error, Debug)]

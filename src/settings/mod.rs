@@ -87,3 +87,24 @@ impl AppConfig {
         Ok(())
     }
 }
+
+pub mod logging {
+    use crate::error::{Error, Result};
+    use tracing_subscriber::{fmt, EnvFilter};
+
+    pub fn setup_logging(verbosity: u8) -> Result<()> {
+        let filter = match verbosity {
+            0 => "info",
+            1 => "debug",
+            _ => "trace",
+        };
+
+        tracing_subscriber::fmt()
+            .with_env_filter(EnvFilter::new(filter))
+            .with_writer(std::io::stderr)
+            .try_init()
+            .map_err(|e| Error::Logging(e.to_string()))?;
+
+        Ok(())
+    }
+}

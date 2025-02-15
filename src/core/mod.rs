@@ -1,2 +1,2 @@
-pub(crate) mod aws;
-mod cache;
+pub mod aws;
+pub mod cache;
