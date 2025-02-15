@@ -28,20 +28,20 @@ pub fn get_cached() -> Result<Option<super::aws::CredentialsResponse>> {
 
 pub fn store(creds: &CredentialsResponse) -> Result<()> {
     let path = cache_path()?;
-    let dir = path.parent().ok_or(Error::Cache("Invalid path".into()))?;
+    let dir = &path.parent().ok_or(Error::Cache("Invalid path".into()))?;
 
     let expiration = DateTime::parse_from_rfc3339(&creds.credentials.expiration)
         .map(|dt| dt.with_timezone(&Utc))
         .map_err(|_| Error::CredentialsFormat)?;
 
     let cached = CachedCredentials {
-        credentials: **creds.clone(),
+        credentials: creds.clone(),
         expiration,
     };
 
     fs::create_dir_all(dir)?;
-    let data = serde_json::to_string(&cached)?;
-    fs::write(path, data)?;
+    let data = serde_json::to_string(&cached.credentials)?;
+    fs::write(&path, data)?;
 
     #[cfg(unix)]
     {

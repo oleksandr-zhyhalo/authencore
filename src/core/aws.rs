@@ -6,12 +6,12 @@ use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::Path;
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct CredentialsResponse {
     pub credentials: AwsCredentials,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct AwsCredentials {
     #[serde(rename = "accessKeyId")]
     pub access_key_id: String,

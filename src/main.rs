@@ -10,7 +10,7 @@ pub mod error;
 #[tokio::main]
 async fn main() {
     let cli = cli::Cli::parse();
-    settings::logging::setup_logging(cli.verbose)?;
-    handle_command(cli.command).await;
+    settings::logging::setup_logging(cli.verbose).expect("TODO: panic message");
+    handle_command(cli.command).await.expect("Error: ");
 
 }

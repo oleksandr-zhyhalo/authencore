@@ -1,33 +1,39 @@
+use std::collections::HashMap;
 use crate::error::{ConfigError, Error, Result};
 use serde::Deserialize;
 use std::path::{Path, PathBuf};
 
 #[derive(Debug, Deserialize)]
 pub struct AppConfig {
-    pub active_profile: String,
-    pub profiles: Vec<Profile>
+    #[serde(rename = "environment")]
+    pub env_config: EnvironmentConfig,
 }
 
-impl AppConfig {
-    pub fn active_profile(&self) -> Result<&Profile> {
-        self.profiles
-            .iter()
-            .find(|p| p.name == self.active_profile)
-            .ok_or_else(|| Error::Config(ConfigError::MissingEnvironment(
-                format!("Active profile '{}' not found in configuration", self.active_profile)
-            )))    }
+#[derive(Debug, Deserialize)]
+pub struct EnvironmentConfig {
+    pub current: String,
+    #[serde(flatten)]
+    pub profiles: HashMap<String, Profile>,
 }
 
 #[derive(Debug, Deserialize, Clone)]
 pub struct Profile {
-    pub name: String,
     pub aws_iot_endpoint: String,
     pub role_alias: String,
-    pub ca_path: PathBuf,
-    pub cert_path: PathBuf,
-    pub key_path: PathBuf,
+    pub cert_path: std::path::PathBuf,
+    pub key_path: std::path::PathBuf,
+    pub ca_path: std::path::PathBuf,
 }
 
+impl AppConfig {
+    pub fn active_profile(&self) -> Result<&Profile> {
+        self.env_config.profiles
+            .get(&self.env_config.current)
+            .ok_or_else(|| Error::Config(ConfigError::MissingEnvironment(
+                format!("Profile '{}' not found", self.env_config.current)
+            )))
+    }
+}
 impl AppConfig {
     pub fn load() -> Result<Self> {
         let config_path = Self::find_config_file()?;
@@ -41,14 +47,14 @@ impl AppConfig {
             .try_deserialize()
             .map_err(|e| Error::Config(ConfigError::LoadError(e.to_string())))
     }
-    pub fn validate(&self) -> Result<()> {
-        if self.active_profile != "" {
-            Ok(println!("TODO Validation"));
-        } Err("Profile does not exist")?
+    pub fn validate(&self) {
+        if self.env_config.current != "" {
+            println!("TODO Validation");
+        }
     }
     pub fn list_profiles(&self) {
-        for profile in &self.profiles {
-            println!("Profile: {}", profile.name);
+        for profile in &self.env_config.profiles {
+            println!("Profile: {:#?}", profile);
         }
     }
     fn find_config_file() -> Result<PathBuf> {
