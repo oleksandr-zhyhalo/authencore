@@ -24,29 +24,35 @@ pub struct AwsCredentials {
 
 pub async fn create_mtls_client(profile: &Profile) -> Result<Client> {
     let load_pem = |path: &Path| -> Result<Vec<u8>> {
-        fs::read(path).map_err(|e| {
-            Error::Config(ConfigError::FileNotFound {
-                file: path.to_path_buf(),
-                description: format!("Failed to read file: {e}"),
-            })
-        })
+        fs::read(path).map_err(|e| Error::Config(ConfigError::FileNotFound {
+            file: path.to_path_buf(),
+            description: format!("Failed to read PEM file: {e}"),
+        }))
     };
 
+    // Load PEM files
     let ca = load_pem(&profile.ca_path)?;
     let cert = load_pem(&profile.cert_path)?;
     let key = load_pem(&profile.key_path)?;
 
+    // Create identity with proper PEM formatting
     let identity = Identity::from_pem(
-        &[cert.as_slice(), key.as_slice()].concat()
+        &format!("{}\n{}",
+                 String::from_utf8_lossy(&cert),
+                 String::from_utf8_lossy(&key)
+        ).as_bytes()
     )?;
+
     let ca_cert = Certificate::from_pem(&ca)?;
 
     Client::builder()
+        .use_rustls_tls()
         .add_root_certificate(ca_cert)
         .identity(identity)
         .build()
         .map_err(Into::into)
 }
+
 
 pub async fn fetch_credentials(profile: &Profile, client: &Client) -> Result<CredentialsResponse> {
     let url = format!(
