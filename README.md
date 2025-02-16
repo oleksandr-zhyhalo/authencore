@@ -47,11 +47,11 @@ sudo mkdir -p /etc/authencore /var/log/authencore
 # Install binary
 sudo install -m 755 authencore/authencore /usr/local/bin/
 
-# Set up config and logs (replace 'your-username' with your actual username)
+# Set up settings and logs (replace 'your-username' with your actual username)
 sudo chown your-username:your-username /etc/authencore /var/log/authencore
 sudo chmod 700 /etc/authencore /var/log/authencore
 
-# Install config if needed
+# Install settings if needed
 sudo install -m 600 -o your-username authencore/authencore.toml.sample /etc/authencore/authencore.conf
 ```
 
