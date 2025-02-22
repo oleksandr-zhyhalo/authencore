@@ -1,0 +1,11 @@
+current_env: dev
+
+dev:
+  iot_endpoint: "c1cavenp81g2c1.credentials.iot.eu-west-1.amazonaws.com"
+  ca_path: "/home/oleksandr/GolandProjects/authencore/certs/AmazonRootCA1.pem"
+  key_path: "/home/oleksandr/GolandProjects/authencore/certs/private_key-196.pem.key"
+  cert_path: "/home/oleksandr/GolandProjects/authencore/certs/certificate_pem-196.pem.crt"
+  role_alias: "authguard-poc"
+  region: "eu-west-1"
+
+#stage:
