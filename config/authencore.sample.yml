@@ -1,0 +1,11 @@
+current_env: dev
+
+dev:
+  iot_endpoint: ""
+  ca_path: ""
+  key_path: ""
+  cert_path: ""
+  role_alias: ""
+  region: ""
+
+#stage:
