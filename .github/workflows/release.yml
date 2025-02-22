@@ -44,7 +44,7 @@ jobs:
           go build -ldflags "-s -w" -o authencore main.go
           mkdir -p release
           cp config/authencore.yml.sample release/
-          tar -czvf authencore-${{ matrix.goos }}-${{ matrix.goarch }}.tar.gz -C release authencore config/authencore.yml.sample
+          tar -czvf authencore-${{ matrix.goos }}-${{ matrix.goarch }}.tar.gz -C release authencore authencore.yml.sample
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
