@@ -1,0 +1,76 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main ]
+    tags: [ 'v*' ]
+  pull_request:
+
+jobs:
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.22'
+
+  build:
+    name: Build Binaries
+    needs: test
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        goos: [linux, darwin]
+        goarch: [amd64, arm64]
+      fail-fast: false
+    env:
+      GOOS: ${{ matrix.goos }}
+      GOARCH: ${{ matrix.goarch }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.22'
+
+      - name: Build
+        run: |
+          go build -ldflags "-s -w" -o authencore main.go
+          mkdir -p release
+          cp authencore.yml.sample release/
+          tar -czvf authencore-${{ matrix.goos }}-${{ matrix.goarch }}.tar.gz -C release authencore authencore.yml.sample
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: authencore-${{ matrix.goos }}-${{ matrix.goarch }}
+          path: |
+            authencore-${{ matrix.goos }}-${{ matrix.goarch }}.tar.gz
+
+  release:
+    name: Create Release
+    needs: [test, build]
+    if: startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          name: ${{ github.ref_name }}
+          body: "Authencore release - ${{ github.ref_name }}"
+          files: |
+            artifacts/**/authencore-*.tar.gz
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
