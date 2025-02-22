@@ -18,6 +18,12 @@ jobs:
         with:
           go-version: '1.22'
 
+      - name: Run tests
+        run: go test -v -race -coverprofile=coverage.txt ./...
+
+      - name: Upload coverage
+        uses: codecov/codecov-action@v4
+
   build:
     name: Build Binaries
     needs: test
@@ -41,30 +47,35 @@ jobs:
 
       - name: Build
         run: |
-          # Build binary
           go build -ldflags "-s -w" -o authencore main.go
-          
-          # Create release directory
           mkdir -p release
-          
-          # Move files to release directory
-          mv authencore release/
           cp config/authencore.yml.sample release/
-          
-          # Create tarball with proper paths
           tar -czvf authencore-${{ matrix.goos }}-${{ matrix.goarch }}.tar.gz -C release authencore authencore.yml.sample
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: authencore-${{ matrix.goos }}-${{ matrix.goarch }}
+          path: authencore-${{ matrix.goos }}-${{ matrix.goarch }}.tar.gz
 
   release:
     name: Create Release
     needs: [test, build]
     if: startsWith(github.ref, 'refs/tags/')
     runs-on: ubuntu-latest
-
+    permissions:
+      contents: write
     steps:
-      - name: Download all artifacts
+      - name: Download artifacts
         uses: actions/download-artifact@v4
         with:
           path: artifacts
+          pattern: authencore-*
+
+      - name: Prepare release assets
+        run: |
+          mkdir -p release_assets
+          find artifacts -name '*.tar.gz' -exec cp {} release_assets/ \;
 
       - name: Create Release
         uses: softprops/action-gh-release@v1
@@ -72,6 +83,6 @@ jobs:
           name: ${{ github.ref_name }}
           body: "Authencore release - ${{ github.ref_name }}"
           files: |
-            artifacts/**/authencore-*.tar.gz
+            release_assets/*
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
