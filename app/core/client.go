@@ -8,6 +8,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"time"
 )
 
 type Credentials struct {
@@ -64,8 +65,20 @@ func BuildClient(certFile, keyFile, caFile string) (*http.Client, error) {
 
 	return client, nil
 }
+func RetrieveCredentials(client *http.Client, iotEndpoint, roleAlias string, maxRetries, retryDelay int) (Credentials, error) {
+	var lastErr error
+	for i := 0; i <= maxRetries; i++ {
+		creds, err := attemptCredentialsRequest(client, iotEndpoint, roleAlias)
+		if err == nil {
+			return creds, nil
+		}
+		lastErr = err
+		time.Sleep(time.Duration(retryDelay*(i+1)) * time.Millisecond)
+	}
+	return Credentials{}, fmt.Errorf("after %d attempts: %v", maxRetries, lastErr)
+}
 
-func RetrieveCredentials(client *http.Client, iotEndpoint, roleAlias string) (Credentials, error) {
+func attemptCredentialsRequest(client *http.Client, iotEndpoint, roleAlias string) (Credentials, error) {
 	if client == nil {
 		return Credentials{}, fmt.Errorf("HTTP client cannot be nil")
 	}

@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"path/filepath"
 )
 
 const (
@@ -20,6 +21,22 @@ type AWSCredentialProcessOutput struct {
 	SecretAccessKey string `json:"SecretAccessKey"`
 	SessionToken    string `json:"SessionToken"`
 	Expiration      string `json:"Expiration"`
+}
+
+func setupLogger() *os.File {
+	logDir := "/var/log/authencore"
+	logPath := filepath.Join(logDir, "error.log")
+
+	logFile, err := os.OpenFile(logPath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	if err != nil {
+		// This will output to stderr as final fallback
+		log.Fatalf("FATAL: Failed to access log file: %v (ensure /var/log/authencore exists)", err)
+	}
+
+	// Redirect all logging to the file
+	log.SetOutput(logFile)
+	log.SetFlags(log.Ldate | log.Ltime | log.LUTC | log.Lshortfile)
+	return logFile
 }
 
 func run() error {
@@ -42,13 +59,15 @@ func run() error {
 	if err != nil {
 		return fmt.Errorf("failed to create TLS client: %v", err)
 	}
-	if credentials, ok := core.ReadCache(); ok {
+	if credentials, ok := core.ReadCache(currentConfig.CacheBufferMinutes); ok {
 		return outputCredentials(credentials)
 	}
 	credentials, err := core.RetrieveCredentials(
 		client,
 		currentConfig.IoTEndpoint,
 		currentConfig.RoleAlias,
+		currentConfig.MaxRetries,
+		currentConfig.RetryDelayMs,
 	)
 	if err != nil {
 		return fmt.Errorf("failed to retrieve credentials: %v", err)
@@ -85,7 +104,9 @@ func outputCredentials(creds core.Credentials) error {
 }
 
 func main() {
-	log.SetOutput(os.Stderr)
+	logFile := setupLogger()
+	defer logFile.Close()
+	log.SetOutput(logFile)
 	log.SetFlags(log.Ldate | log.Ltime | log.LUTC | log.Lshortfile)
 
 	if err := run(); err != nil {

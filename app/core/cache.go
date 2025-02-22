@@ -2,7 +2,6 @@ package core
 
 import (
 	"encoding/json"
-	"fmt"
 	"log"
 	"os"
 	"path/filepath"
@@ -15,18 +14,14 @@ type cacheFile struct {
 }
 
 func getCachePath() (string, error) {
-	homeDir, err := os.UserHomeDir()
+	cacheDir, err := os.UserCacheDir()
 	if err != nil {
 		return "", err
 	}
-	cacheDir := filepath.Join(homeDir, ".authencore")
-	if err := os.MkdirAll(cacheDir, 0700); err != nil {
-		return "", err
-	}
-	return filepath.Join(cacheDir, "cache.json"), nil
+	return filepath.Join(cacheDir, "authencore", "cache.json"), nil
 }
 
-func ReadCache() (Credentials, bool) {
+func ReadCache(bufferMinutes int) (Credentials, bool) {
 	cachePath, err := getCachePath()
 	if err != nil {
 		log.Printf("Error getting cache path: %v", err)
@@ -48,9 +43,7 @@ func ReadCache() (Credentials, bool) {
 		return Credentials{}, false
 	}
 	now := time.Now().UTC()
-	fmt.Printf("Expiration: %v\n", cf.Expiration)
-	fmt.Printf("Time now: %v\n", now)
-	if now.Add(5 * time.Minute).Before(cf.Expiration) {
+	if now.Add(time.Duration(bufferMinutes) * time.Minute).Before(cf.Expiration) {
 		return cf.Credentials, true
 	}
 	return cf.Credentials, false

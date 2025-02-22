@@ -8,12 +8,15 @@ import (
 )
 
 type EnvConfig struct {
-	IoTEndpoint string `yaml:"iot_endpoint"`
-	CAPath      string `yaml:"ca_path"`
-	CertPath    string `yaml:"cert_path"`
-	KeyPath     string `yaml:"key_path"`
-	RoleAlias   string `yaml:"role_alias"`
-	Region      string `yaml:"region"`
+	IoTEndpoint        string `yaml:"iot_endpoint"`
+	CAPath             string `yaml:"ca_path"`
+	CertPath           string `yaml:"cert_path"`
+	KeyPath            string `yaml:"key_path"`
+	RoleAlias          string `yaml:"role_alias"`
+	Region             string `yaml:"region"`
+	CacheBufferMinutes int    `yaml:"cache_buffer_minutes"`
+	MaxRetries         int    `yaml:"max_retries"`
+	RetryDelayMs       int    `yaml:"retry_delay_ms"`
 }
 
 type Config struct {
@@ -43,10 +46,14 @@ func (c *Config) GetCurrentConfig() (*EnvConfig, error) {
 }
 func LoadConfig(configName string) (*Config, error) {
 	searchPath := []string{
-		"config",
-		".",
+		filepath.Join(os.Getenv("XDG_CONFIG_HOME"), "authencore"),
+		filepath.Join("/etc", "authencore"),
 		"/home/oleksandr/GolandProjects/authencore/config",
-		"/etc/authencore",
+		".",
+	}
+
+	if home, err := os.UserHomeDir(); err == nil {
+		searchPath = append(searchPath, filepath.Join(home, ".config", "authencore"))
 	}
 	var configPath string
 	for _, path := range searchPath {
