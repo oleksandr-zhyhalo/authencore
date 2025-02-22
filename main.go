@@ -1,8 +1,8 @@
 package main
 
 import (
-	"authencore/configuration"
-	"authencore/core"
+	"authencore/app/configuration"
+	"authencore/app/core"
 	"encoding/json"
 	"fmt"
 	"log"
