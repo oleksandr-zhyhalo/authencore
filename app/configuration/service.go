@@ -48,7 +48,6 @@ func LoadConfig(configName string) (*Config, error) {
 	searchPath := []string{
 		filepath.Join(os.Getenv("XDG_CONFIG_HOME"), "authencore"),
 		filepath.Join("/etc", "authencore"),
-		"/home/oleksandr/GolandProjects/authencore/config",
 		".",
 	}
 
