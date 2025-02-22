@@ -47,10 +47,20 @@ jobs:
 
       - name: Build
         run: |
-          go build -ldflags "-s -w" -o authencore main.go
+          # Create output directory first
           mkdir -p release
+          
+          # Build directly into release directory
+          go build -ldflags "-s -w" -o release/authencore main.go
+          
+          # Copy config sample
           cp config/authencore.yml.sample release/
-          tar -czvf authencore-${{ matrix.goos }}-${{ matrix.goarch }}.tar.gz -C release authencore authencore.yml.sample
+          
+          # Verify files exist
+          ls -la release/
+          
+          # Create tarball from release directory contents
+          tar -czvf authencore-${{ matrix.goos }}-${{ matrix.goarch }}.tar.gz -C release .
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
