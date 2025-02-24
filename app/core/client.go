@@ -61,13 +61,14 @@ func BuildClient(certFile, keyFile, caFile string) (*http.Client, error) {
 		Transport: &http.Transport{
 			TLSClientConfig: tlsConfig,
 		},
+		Timeout: 60 * time.Second,
 	}
 
 	return client, nil
 }
 func RetrieveCredentials(client *http.Client, iotEndpoint, roleAlias string, maxRetries, retryDelay int) (Credentials, error) {
 	var lastErr error
-	for i := 0; i <= maxRetries; i++ {
+	for i := 0; i < maxRetries; i++ {
 		creds, err := attemptCredentialsRequest(client, iotEndpoint, roleAlias)
 		if err == nil {
 			return creds, nil

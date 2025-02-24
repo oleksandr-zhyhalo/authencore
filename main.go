@@ -87,6 +87,9 @@ func getConfigPath() string {
 }
 
 func outputCredentials(creds core.Credentials) error {
+	if creds.AccessKeyId == "" || creds.SecretAccessKey == "" {
+		return fmt.Errorf("credentials validation failed: empty AccessKeyId or SecretAccessKey")
+	}
 	output := AWSCredentialProcessOutput{
 		Version:         1,
 		AccessKeyId:     creds.AccessKeyId,
@@ -106,8 +109,6 @@ func outputCredentials(creds core.Credentials) error {
 func main() {
 	logFile := setupLogger()
 	defer logFile.Close()
-	log.SetOutput(logFile)
-	log.SetFlags(log.Ldate | log.Ltime | log.LUTC | log.Lshortfile)
 
 	if err := run(); err != nil {
 		log.Fatalf("Application error: %v", err)

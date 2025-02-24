@@ -37,7 +37,7 @@ func (c *Config) GetCurrentConfig() (*EnvConfig, error) {
 		return &c.Stage, nil
 	case "prod":
 		if (EnvConfig{} == c.Prod) {
-			return nil, fmt.Errorf("product environment is not configured")
+			return nil, fmt.Errorf("prod environment is not configured")
 		}
 		return &c.Prod, nil
 	default:

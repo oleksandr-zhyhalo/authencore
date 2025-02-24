@@ -2,6 +2,7 @@ package core
 
 import (
 	"encoding/json"
+	"fmt"
 	"log"
 	"os"
 	"path/filepath"
@@ -52,7 +53,7 @@ func ReadCache(bufferMinutes int) (Credentials, bool) {
 func WriteCache(creds Credentials) error {
 	expiration, err := time.Parse(time.RFC3339, creds.Expiration)
 	if err != nil {
-		return err
+		return fmt.Errorf("invalid expiration format (must be RFC3339): %v", err)
 	}
 
 	cf := cacheFile{
