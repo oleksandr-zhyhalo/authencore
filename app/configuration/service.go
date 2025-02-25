@@ -17,6 +17,7 @@ type EnvConfig struct {
 	CacheBufferMinutes int    `yaml:"cache_buffer_minutes"`
 	MaxRetries         int    `yaml:"max_retries"`
 	RetryDelayMs       int    `yaml:"retry_delay_ms"`
+	SessionDurationSec int    `yaml:"session_duration_sec"`
 }
 
 type Config struct {

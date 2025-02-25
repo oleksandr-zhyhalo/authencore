@@ -7,5 +7,7 @@ dev:
   cert_path: ""
   role_alias: ""
   region: ""
-
-#stage:
+  session_duration_sec: 3600
+  cache_buffer_minutes: 5
+  max_retries: 3 
+  retry_delay_ms: 1000 # this should be same as Role Alias Sessions duration set in AWS

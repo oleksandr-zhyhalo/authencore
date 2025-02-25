@@ -33,7 +33,6 @@ func setupLogger() *os.File {
 		log.Fatalf("FATAL: Failed to access log file: %v (ensure /var/log/authencore exists)", err)
 	}
 
-	// Redirect all logging to the file
 	log.SetOutput(logFile)
 	log.SetFlags(log.Ldate | log.Ltime | log.LUTC | log.Lshortfile)
 	return logFile
@@ -59,7 +58,7 @@ func run() error {
 	if err != nil {
 		return fmt.Errorf("failed to create TLS client: %v", err)
 	}
-	if credentials, ok := core.ReadCache(currentConfig.CacheBufferMinutes); ok {
+	if credentials, ok := core.ReadCache(currentConfig.CacheBufferMinutes, currentConfig.SessionDurationSec); ok {
 		return outputCredentials(credentials)
 	}
 	credentials, err := core.RetrieveCredentials(
@@ -72,7 +71,7 @@ func run() error {
 	if err != nil {
 		return fmt.Errorf("failed to retrieve credentials: %v", err)
 	}
-	if err := core.WriteCache(credentials); err != nil {
+	if err := core.WriteCache(credentials, currentConfig.SessionDurationSec); err != nil {
 		log.Printf("Failed to write cache: %v", err)
 	}
 
